@@ -1,18 +1,66 @@
-name: Docker Image CI
+name: Build and Deploy to GCE
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+    - main
+    - leyuan/github-actions # TODO: remove once workflow is confirmed to work
+
+env:
+  PROJECT_ID: ${{ secrets.GCE_PROJECT_ID }}
+  GCE_INSTANCE: test-instance1
+  GCE_INSTANCE_ZONE: us-central1-a
 
 jobs:
-
-  build:
-
+  setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # Setup gcloud CLI
+    - name: Setup
+      uses: google-github-actions/setup-gcloud@master
+      with:
+        version: '290.0.1'
+        service_account_key: ${{ secrets.GCE_SA_KEY }}
+        project_id: ${{ secrets.GCE_PROJECT_ID }}
+
+    # Configure Docker to use the gcloud command-line tool as a credential
+    # helper for authentication
+    - run: |-
+        gcloud --quiet auth configure-docker
+
+    # Build the Docker image
+    - name: Build
+      run: |-
+        docker build --tag "gcr.io/$PROJECT_ID/$GCE_INSTANCE-image:$GITHUB_SHA" .
+
+    # Push the Docker image to Google Container Registry
+    - name: Publish
+      run: |-
+        docker push "gcr.io/$PROJECT_ID/$GCE_INSTANCE-image:$GITHUB_SHA"
+
+    # Add pruning to VM startup script
+    - name: Update startup script to prune unused images
+      run: |-
+        gcloud compute instances add-metadata $GCE_INSTANCE \
+          --zone "$GCE_INSTANCE_ZONE" \
+          --metadata=startup-script="#! /bin/bash
+            docker image prune -af"
+
+    - name: Deploy
+      run: |-
+        gcloud compute instances update-container "$GCE_INSTANCE" \
+          --zone "$GCE_INSTANCE_ZONE" \
+          --container-image "gcr.io/$PROJECT_ID/$GCE_INSTANCE-image:$GITHUB_SHA"
+
+    # Purge old images from GCR (not latest)
+    - name: Purge old GCR images
+      run: |-
+        gcloud container images list-tags gcr.io/$PROJECT_ID/$GCE_INSTANCE-image \
+          --format="get(digest)" --filter="NOT tags=$GITHUB_SHA" | \
+          awk -v image_path="gcr.io/$PROJECT_ID/$GCE_INSTANCE-image@" '{print image_path $1}' | \
+          xargs -r gcloud container images delete --force-delete-tags --quiet
