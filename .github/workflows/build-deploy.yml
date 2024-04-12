@@ -4,7 +4,7 @@ on:
   push:
     branches:
     - main
-    - leyuan/github-actions # TODO: remove once workflow is confirmed to work
+    - leyuan/github-actions # TODO: remove once workflow is confirmed to be working
 
 env:
   PROJECT_ID: ${{ secrets.GCE_PROJECT_ID }}
