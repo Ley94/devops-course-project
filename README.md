@@ -13,5 +13,7 @@ Deploy [containerised Scrumblr](https://github.com/u1i/scrumblr-docker) to VM (c
 - Create YAML file for GitHub Actions (according to [guide 1](https://medium.com/@vngauv/from-github-to-gce-automate-deployment-with-github-actions-27e89ba6add8) and [guide 2](https://github.com/u1i/ghactions-test/blob/master/.github/workflows/test1.yml))
 
 ## Screenshots:
+![Screenshot 2024-04-13 at 3 54 50 AM](https://github.com/Ley94/devops-course-project/assets/25318216/833bb295-650d-4f87-9055-476c560b70e5)
+![Screenshot 2024-04-13 at 3 53 50 AM](https://github.com/Ley94/devops-course-project/assets/25318216/ce3d27fd-7782-4e23-ac7b-47959dc112e6)
 
 
